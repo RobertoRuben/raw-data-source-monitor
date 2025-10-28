@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional
+
 import httpx
 from dotenv import load_dotenv
 
@@ -20,31 +20,33 @@ class ApiExtractor:
             port = os.getenv("API_PORT", "8087")
             base = os.getenv("API_BASE", "/WS_AB/api")
             self.api_url = f"{scheme}://{host}:{port}{base}"
-        
+
         self.authorization = os.getenv("AUTHORIZATION", "")
-        
+
         # Parámetros fijos
         self.ruc_empresa = os.getenv("API_PARAM_RUC_EMPRESA", "20170040938")
         self.cultivo_id = os.getenv("API_PARAM_CULTIVO_ID", "2")
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         """Construye los headers para las peticiones a la API."""
         return {
             "Authorization": self.authorization,
             "Content-Type": "application/json",
         }
 
-    def _build_params(self, custom_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _build_params(
+        self, custom_params: dict[str, any] | None = None
+    ) -> dict[str, any]:
         """
         Construye los parámetros con los prefijos correctos de la API.
-        
+
         Args:
             custom_params: Parámetros personalizados con nombres simplificados:
                 - fundo: int
                 - cartilla: int
                 - fecha_inicio: str (YYYY-MM-DD)
                 - fecha_fin: str (YYYY-MM-DD)
-        
+
         Returns:
             Dict con parámetros en formato de la API
         """
@@ -57,19 +59,19 @@ class ApiExtractor:
             "fecha_fin": "prmdatFechaFin",
             "ruc_empresa": "prmstrRUCEmpresa",
         }
-        
+
         # Parámetros base
         params = {
             "prmintCultivo": self.cultivo_id,
             "prmstrRUCEmpresa": self.ruc_empresa,
         }
-        
+
         # Agregar parámetros personalizados con mapeo
         if custom_params:
             for key, value in custom_params.items():
                 api_key = param_mapping.get(key, key)
                 params[api_key] = value
-        
+
         return params
 
     async def get_evaluaciones(
@@ -78,19 +80,19 @@ class ApiExtractor:
         cartilla: int,
         fecha_inicio: str,
         fecha_fin: str,
-    ) -> Dict[str, Any] | list[Dict[str, Any]]:
+    ) -> dict | list[dict]:
         """
         Obtiene datos de evaluaciones por variable.
-        
+
         Args:
             fundo: ID del fundo
             cartilla: ID de la cartilla
             fecha_inicio: Fecha de inicio (YYYY-MM-DD)
             fecha_fin: Fecha de fin (YYYY-MM-DD)
-        
+
         Returns:
             Respuesta de la API
-        
+
         Example:
             data = await api.get_evaluaciones(
                 fundo=290,
@@ -100,28 +102,28 @@ class ApiExtractor:
             )
         """
         endpoint = "/Fitosanidad/ZABG_ExcelRptEvaluacionesXVariable"
-        
-        params = self._build_params({
-            "fundo": fundo,
-            "cartilla": cartilla,
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
-        })
-        
+
+        params = self._build_params(
+            {
+                "fundo": fundo,
+                "cartilla": cartilla,
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+            }
+        )
+
         return await self._request(endpoint, params)
 
     async def get(
-        self, 
-        endpoint: str, 
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any] | list[Dict[str, Any]]:
+        self, endpoint: str, params: dict[str, any] | None = None
+    ) -> dict | list[dict]:
         """
         Método genérico para cualquier endpoint.
-        
+
         Args:
             endpoint: Ruta del endpoint (ej: "/Fitosanidad/ZABG_ExcelRptEvaluacionesXVariable")
             params: Parámetros con nombres simplificados (fundo, cartilla, fecha_inicio, etc.)
-        
+
         Returns:
             Respuesta de la API
         """
@@ -129,26 +131,24 @@ class ApiExtractor:
         return await self._request(endpoint, all_params)
 
     async def _request(
-        self, 
-        endpoint: str, 
-        params: Dict[str, Any]
-    ) -> Dict[str, Any] | list[Dict[str, Any]]:
+        self, endpoint: str, params: dict[str, any]
+    ) -> dict | list[dict]:
         """
         Realiza la petición HTTP.
-        
+
         Args:
             endpoint: Ruta del endpoint
             params: Parámetros ya formateados
-        
+
         Returns:
             Respuesta de la API
-        
+
         Raises:
             httpx.HTTPError: Si hay un error en la petición HTTP
         """
         url = f"{self.api_url}{endpoint}"
         headers = self._get_headers()
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 url,
